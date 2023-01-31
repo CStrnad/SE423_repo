@@ -248,7 +248,8 @@ void main(void)
     // 200MHz CPU Freq,                       Period (in uSeconds)
     ConfigCpuTimer(&CpuTimer0, LAUNCHPAD_CPU_FREQUENCY, 10000);
     ConfigCpuTimer(&CpuTimer1, LAUNCHPAD_CPU_FREQUENCY, 20000);
-    ConfigCpuTimer(&CpuTimer2, LAUNCHPAD_CPU_FREQUENCY, 40000);
+//    ConfigCpuTimer(&CpuTimer2, LAUNCHPAD_CPU_FREQUENCY, 40000); //Commented out original code
+    ConfigCpuTimer(&CpuTimer2, LAUNCHPAD_CPU_FREQUENCY, 5000); //Should make Serial output occur every 250ms
 
     // Enable CpuTimer Interrupt bit TIE
     CpuTimer0Regs.TCR.all = 0x4000;
