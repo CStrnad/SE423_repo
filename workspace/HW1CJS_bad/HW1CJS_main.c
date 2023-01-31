@@ -41,22 +41,12 @@ uint16_t UARTPrint = 0;
 uint16_t LEDdisplaynum = 0;
 
 //Global variables created per HW1 Q8. CJS.
-//float sinvalue, time, ampl, frequency, offset;
-//sinvalue = time = 0;
-//ampl = 3;
-//frequency = 0.05;
-//offset = 0.25;
-float sinvalue = 0;
-float time=0;
-float ampl=3.0;
-float frequency = 0.05;
-float offset = 0.25;
-int32_t timeint = 0;
-float satvalue = 0;
-
-int direction = 0;
-int rotationCounter = 0;
-
+float sinvalue, time, ampl, frequency, offset;
+sinvalue = time = 0;
+ample = 3;
+frequency = 0.05;
+offset = 0.25;
+int32_t timeout = 0;
 
 //Saturate Function here CJS.
 float saturate(float input, float saturation_limit) //Take in floats input and saturation limit.
@@ -64,7 +54,7 @@ float saturate(float input, float saturation_limit) //Take in floats input and s
     //input: Initial value to be saturated CJS
     //saturation_limit: test float to be compared to 'input' CJS
 
-    float saturated;
+    float saturated
 
     //test cases:
     /*
@@ -78,14 +68,10 @@ float saturate(float input, float saturation_limit) //Take in floats input and s
     if (input > saturation_limit || input < -saturation_limit) //Check if value needs to be saturated CJS.
     {
         if (input > saturation_limit) //If input is greater than saturation limit, return positive saturation limit.
-//            return saturation_limit;
-            saturated = saturation_limit;
+            return saturation_limit; break;
         if (input < saturation_limit) //If input is less than saturation limit, return negative saturation limit.
-//            return -saturation_limit;
-            saturated = -saturation_limit;
+            return -saturation_limit; break;
     }
-    else saturated = input;
-    return saturated;
 }
 
 void main(void)
@@ -95,93 +81,93 @@ void main(void)
     InitSysCtrl();
 
     InitGpio();
-
-    // Blue LED on LaunchPad
+	
+	// Blue LED on LaunchPad
     GPIO_SetupPinMux(31, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(31, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPASET.bit.GPIO31 = 1;
 
-    // Red LED on LaunchPad
+	// Red LED on LaunchPad
     GPIO_SetupPinMux(34, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(34, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPBSET.bit.GPIO34 = 1;
 
-    // LED1 and PWM Pin
+	// LED1 and PWM Pin
     GPIO_SetupPinMux(22, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(22, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPACLEAR.bit.GPIO22 = 1;
-
-    // LED2
+	
+	// LED2
     GPIO_SetupPinMux(94, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(94, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPCCLEAR.bit.GPIO94 = 1;
 
-    // LED3
+	// LED3
     GPIO_SetupPinMux(95, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(95, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPCCLEAR.bit.GPIO95 = 1;
 
-    // LED4
+	// LED4
     GPIO_SetupPinMux(97, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(97, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPDCLEAR.bit.GPIO97 = 1;
 
-    // LED5
+	// LED5
     GPIO_SetupPinMux(111, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(111, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPDCLEAR.bit.GPIO111 = 1;
 
-    // LED6
+	// LED6
     GPIO_SetupPinMux(130, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(130, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPECLEAR.bit.GPIO130 = 1;
 
-    // LED7
+	// LED7	
     GPIO_SetupPinMux(131, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(131, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPECLEAR.bit.GPIO131 = 1;
 
-    // LED8
+	// LED8
     GPIO_SetupPinMux(25, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(25, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPACLEAR.bit.GPIO25 = 1;
 
-    // LED9
+	// LED9
     GPIO_SetupPinMux(26, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(26, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPACLEAR.bit.GPIO26 = 1;
 
-    // LED10
+	// LED10
     GPIO_SetupPinMux(27, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(27, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPACLEAR.bit.GPIO27 = 1;
 
-    // LED11
+	// LED11	
     GPIO_SetupPinMux(60, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(60, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPBCLEAR.bit.GPIO60 = 1;
 
-    // LED12
+	// LED12	
     GPIO_SetupPinMux(61, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(61, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPBCLEAR.bit.GPIO61 = 1;
 
-    // LED13
+	// LED13
     GPIO_SetupPinMux(157, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(157, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPECLEAR.bit.GPIO157 = 1;
 
-    // LED14
+	// LED14
     GPIO_SetupPinMux(158, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(158, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPECLEAR.bit.GPIO158 = 1;
-
-    // LED15
+	
+	// LED15
     GPIO_SetupPinMux(159, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(159, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPECLEAR.bit.GPIO159 = 1;
 
-    // LED16
+	// LED16
     GPIO_SetupPinMux(160, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(160, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPFCLEAR.bit.GPIO160 = 1;
@@ -196,7 +182,7 @@ void main(void)
     GPIO_SetupPinOptions(1, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPASET.bit.GPIO1 = 1;
 
-    //SPIRAM  CS  Chip Select
+	//SPIRAM  CS  Chip Select
     GPIO_SetupPinMux(19, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(19, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPASET.bit.GPIO19 = 1;
@@ -215,17 +201,17 @@ void main(void)
     GPIO_SetupPinMux(9, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(9, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPASET.bit.GPIO9 = 1;
-
+	
     //MPU9250  CS  Chip Select
     GPIO_SetupPinMux(66, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(66, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPCSET.bit.GPIO66 = 1;
-
-    //WIZNET  CS  Chip Select
+	
+	//WIZNET  CS  Chip Select
     GPIO_SetupPinMux(125, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(125, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPDSET.bit.GPIO125 = 1;
-
+	
     //PushButton 1
     GPIO_SetupPinMux(4, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(4, GPIO_INPUT, GPIO_PULLUP);
@@ -241,8 +227,8 @@ void main(void)
     //PushButton 4
     GPIO_SetupPinMux(7, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(7, GPIO_INPUT, GPIO_PULLUP);
-
-    //Joy Stick Pushbutton
+	
+	//Joy Stick Pushbutton
     GPIO_SetupPinMux(8, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(8, GPIO_INPUT, GPIO_PULLUP);
 
@@ -321,9 +307,9 @@ void main(void)
 
     // Enable TINT0 in the PIE: Group 1 interrupt 7
     PieCtrlRegs.PIEIER1.bit.INTx7 = 1;
-    // Enable SWI in the PIE: Group 12 interrupt 9
+	// Enable SWI in the PIE: Group 12 interrupt 9
     PieCtrlRegs.PIEIER12.bit.INTx9 = 1;
-
+	
     // Enable global Interrupts and higher priority real-time debug events
     EINT;  // Enable Global interrupt INTM
     ERTM;  // Enable Global realtime interrupt DBGM
@@ -333,12 +319,7 @@ void main(void)
     while(1)
     {
         if (UARTPrint == 1 ) {
-            timeint = timeint+1;
-            time=timeint*0.25;
-            sinvalue = ampl*sin(2*PI*frequency*time) + offset;
-            satvalue = saturate(sinvalue, 2.65);
-            serial_printf(&SerialA, "timeint:%ld time:%.2f sinvalue:%.3f satvalue:%.2f \r\n", timeint, time, sinvalue, satvalue);
-//            serial_printf(&SerialA,"Num Timer2:%ld Num SerialRX: %ld\r\n",CpuTimer2.InterruptCount,numRXA);
+				serial_printf(&SerialA,"Num Timer2:%ld Num SerialRX: %ld\r\n",CpuTimer2.InterruptCount,numRXA);
             UARTPrint = 0;
         }
     }
@@ -349,16 +330,16 @@ void main(void)
 __interrupt void SWI_isr(void) {
 
     // These three lines of code allow SWI_isr, to be interrupted by other interrupt functions
-    // making it lower priority than all other Hardware interrupts.
-    PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
+	// making it lower priority than all other Hardware interrupts.  
+	PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
     asm("       NOP");                    // Wait one cycle
     EINT;                                 // Clear INTM to enable interrupts
-
-
-
+	
+	
+	
     // Insert SWI ISR Code here.......
-
-
+	
+	
     numSWIcalls++;
     
     DINT;
@@ -377,14 +358,14 @@ __interrupt void cpu_timer0_isr(void)
 //    }
 
     if ((numTimer0calls%250) == 0) {
-        //displayLEDletter(LEDdisplaynum);
+        displayLEDletter(LEDdisplaynum);
         LEDdisplaynum++;
         if (LEDdisplaynum == 0xFFFF) {  // prevent roll over exception
             LEDdisplaynum = 0;
         }
     }
 
-    // Blink LaunchPad Red LED
+	// Blink LaunchPad Red LED
     GpioDataRegs.GPBTOGGLE.bit.GPIO34 = 1;
 
     // Acknowledge this interrupt to receive more interrupts from group 1
@@ -394,128 +375,22 @@ __interrupt void cpu_timer0_isr(void)
 // cpu_timer1_isr - CPU Timer1 ISR
 __interrupt void cpu_timer1_isr(void)
 {
-
-
+	
+	
     CpuTimer1.InterruptCount++;
 }
-
-
 
 // cpu_timer2_isr CPU Timer2 ISR
 __interrupt void cpu_timer2_isr(void)
 {
-
-
-    // Blink LaunchPad Blue LED
+	
+	
+	// Blink LaunchPad Blue LED
     GpioDataRegs.GPATOGGLE.bit.GPIO31 = 1;
 
     CpuTimer2.InterruptCount++;
-
-    if ((CpuTimer2.InterruptCount % 50) == 0) {
-        UARTPrint = 1;
-    }
-
-    //Toggle LED 10 and 11 every 100 milliseconds CJS.
-    if ((CpuTimer2.InterruptCount % 25) == 0)
-    {
-        GpioDataRegs.GPATOGGLE.bit.GPIO27 = 1; //Toggle LED 10 - CJS.
-        GpioDataRegs.GPBTOGGLE.bit.GPIO60 = 1; //Toggle LED 11 - CJS.
-    }
-
-    //If PB1 pressed, toggle LED 12 and 13 - CJS.
-    if (GpioDataRegs.GPADAT.bit.GPIO4 == 0)
-    {
-        if ((CpuTimer2.InterruptCount % 25) == 0)
-        {
-            GpioDataRegs.GPBTOGGLE.bit.GPIO61 = 1; //Toggle LED 12 - CJS.
-            GpioDataRegs.GPETOGGLE.bit.GPIO157 = 1; //Toggle LED 13 - CJS.
-        }
-    }
-    else
-    {
-        GpioDataRegs.GPBDAT.bit.GPIO61 = 0; //Toggle LED 12 - CJS.
-        GpioDataRegs.GPEDAT.bit.GPIO157 = 0; //Toggle LED 13 - CJS.
-    }
-
-    //If PB4 pressed, toggle LED 14 and 15 - CJS.
-    if (GpioDataRegs.GPADAT.bit.GPIO7 == 0)
-    {
-        if ((CpuTimer2.InterruptCount % 25) == 0)
-        {
-            GpioDataRegs.GPETOGGLE.bit.GPIO158 = 1; //Toggle LED 14 - CJS.
-            GpioDataRegs.GPETOGGLE.bit.GPIO159 = 1; //Toggle LED 15 - CJS.
-        }
-    }
-    else
-    {
-        GpioDataRegs.GPESET.bit.GPIO158 = 0; //Toggle LED 14 - CJS.
-        GpioDataRegs.GPESET.bit.GPIO159 = 0; //Toggle LED 15 - CJS.
-    }
-
-    //If PB2 is pressed make LED's chase clockwise
-    if (GpioDataRegs.GPADAT.bit.GPIO5 == 0)
-    {
-        direction = 1;
-    }
-    //IF PB3 is pressed make LED's chase counterclockwise
-    if (GpioDataRegs.GPADAT.bit.GPIO6 == 0)
-    {
-        direction = 2;
-    }
-
-    //If direction = 0, do nothing; 1, clockwise; 2, counterclockwise - CJS.
-    if ((CpuTimer2.InterruptCount % 50) == 0)
-    {
-        if (direction != 0)
-        {
-            switch (rotationCounter)
-            {
-            case 1: //LED 1 on, 6 off
-                GpioDataRegs.GPASET.bit.GPIO22 = 1;
-                GpioDataRegs.GPECLEAR.bit.GPIO130 = 1;
-                break;
-            case 2: //LED 6 on, 7 off
-                GpioDataRegs.GPESET.bit.GPIO130 = 1;
-                GpioDataRegs.GPECLEAR.bit.GPIO131 = 1;
-                break;
-            case 3: //LED 7 on, 8 off
-                GpioDataRegs.GPESET.bit.GPIO131 = 1;
-                GpioDataRegs.GPACLEAR.bit.GPIO25 = 1;
-                break;
-            case 4: //LED 8 on, 9 off
-                GpioDataRegs.GPASET.bit.GPIO25 = 1;
-                GpioDataRegs.GPACLEAR.bit.GPIO26 = 1;
-                break;
-            case 5: //LED 9 on, 4 off
-                GpioDataRegs.GPASET.bit.GPIO26 = 1;
-                GpioDataRegs.GPDCLEAR.bit.GPIO97 = 1;
-                break;
-            case 6: //LED 4 on, 3 off
-                GpioDataRegs.GPDSET.bit.GPIO97 = 1;
-                GpioDataRegs.GPCCLEAR.bit.GPIO95 = 1;
-                break;
-            case 7: //LED 3 on, 2 off
-                GpioDataRegs.GPCSET.bit.GPIO95 = 1;
-                GpioDataRegs.GPCCLEAR.bit.GPIO94 = 1;
-                break;
-            case 8: //LED 2 on, 1 off
-                GpioDataRegs.GPCSET.bit.GPIO94 = 1;
-                GpioDataRegs.GPACLEAR.bit.GPIO22 = 1;
-                break;
-            }
-            if (direction == 1)
-            {
-                rotationCounter++;
-                if (rotationCounter > 8)
-                    rotationCounter = 1;
-            }
-            if (direction == 2)
-            {
-                rotationCounter--;
-                if (rotationCounter < 1)
-                    rotationCounter = 8;
-            }
-        }
-    }
-
+	
+	if ((CpuTimer2.InterruptCount % 50) == 0) {
+		UARTPrint = 1;
+	}
 }
