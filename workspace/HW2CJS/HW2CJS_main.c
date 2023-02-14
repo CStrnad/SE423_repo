@@ -250,7 +250,7 @@ void main(void)
     // 200MHz CPU Freq,                       Period (in uSeconds)
     ConfigCpuTimer(&CpuTimer0, LAUNCHPAD_CPU_FREQUENCY, 10000);
     ConfigCpuTimer(&CpuTimer1, LAUNCHPAD_CPU_FREQUENCY, 20000);
-    ConfigCpuTimer(&CpuTimer2, LAUNCHPAD_CPU_FREQUENCY, 40000);
+    ConfigCpuTimer(&CpuTimer2, LAUNCHPAD_CPU_FREQUENCY, 1000);
 
     // Enable CpuTimer Interrupt bit TIE
     CpuTimer0Regs.TCR.all = 0x4000;
@@ -265,18 +265,19 @@ void main(void)
     //CJS setting bitfield registers for PWM in Exercise 2.
     //CJS Set TBCTL options
     EPwm12Regs.TBCTL.bit.CTRMODE = 0;       //CJS - Counter Mode to Count Up
-    EPwm12Regs.TBCTL.bit.FREE_SOFT = 11;    //CJS - Free soft emulation to Free Run
+    EPwm12Regs.TBCTL.bit.FREE_SOFT = 3;    //CJS - Free soft emulation to Free Run
     EPwm12Regs.TBCTL.bit.PHSEN = 0;         //CJS - Disable time-base counter @ phase register
-    EPwm12Regs.TBCTL.bit.CLKDIV =  000;     //CJS - Set clock div to div by 1.
+    EPwm12Regs.TBCTL.bit.CLKDIV =  0;     //CJS - Set clock div to div by 1.
 
     //CJS Set TBCTR options
     EPwm12Regs.TBCTR = 0;         //CJS Start time @ zero.
 
     //CJS Set TBPRD options
-    EPwm12Regs.TBPRD = 15002;      //CJS - Period freq set to 5KHz (of 200msec)
+    EPwm12Regs.TBPRD = 10000;      //CJS - Period freq set to 5KHz (of 200msec)
 
     //CJS Set CMPA options
-    EPwm12Regs.CMPA.bit.CMPA = 4951; //CJS - Start duty cycle at 0%
+    EPwm12Regs.CMPA.bit.CMPA = 0; //CJS - Start duty cycle at 0%
+    //Was originally 4951, but changed to 0.
 
     //CJS Set AQCTLA options
     EPwm12Regs.AQCTLA.bit.CAU = 1; //
@@ -388,14 +389,16 @@ __interrupt void cpu_timer2_isr(void)
 
     CpuTimer2.InterruptCount++;
 
-    if ((CpuTimer2.InterruptCount % 2.5 == 0)){ //CJS Every 0.1 seconds do something
-//        if (EPwm12Regs.CMPA.bit.CMPA <= 15002)
-//            updown == 1;
-//        if (EPwm12Regs.CMPA.bit.CMPA <= 15002)
-
-//        EPwm12Regs.CMPA.bit.CMPA ++; //Incriment CMPA register. CJS
-
+    //if ((CpuTimer2.InterruptCount % 2 == 0)){ //CJS Every 0.1 seconds do something
+    if (updown == 1) {
+        EPwm12Regs.CMPA.bit.CMPA++;  //CJS Incriment CPMA until it reached TBPRD
+        if (EPwm12Regs.CMPA.bit.CMPA == EPwm12Regs.TBPRD) updown = 0;
     }
+    if (updown == 0) {
+        EPwm12Regs.CMPA.bit.CMPA--; //CJS Decrement CPMA until it reaches Zero
+        if (EPwm12Regs.CMPA.bit.CMPA == 0) updown = 1;
+    }
+   // }
 	
 	if ((CpuTimer2.InterruptCount % 50) == 0) {
 		UARTPrint = 1;
