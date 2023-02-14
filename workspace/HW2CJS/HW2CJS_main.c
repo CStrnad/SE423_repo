@@ -1,7 +1,8 @@
+//This code is being commented by Chris Strnad. Search for CJS.
 //#############################################################################
-// FILE:   HWstarter_main.c
+// FILE:   HW2CJS_main.c
 //
-// TITLE:  HW Starter
+// TITLE:  HW2 Code for SE423. Strnad, Christopher
 //#############################################################################
 
 // Included Files
@@ -40,39 +41,6 @@ extern uint32_t numRXA;
 uint16_t UARTPrint = 0;
 uint16_t LEDdisplaynum = 0;
 
-//Global variables created per HW1 Q8. CJS.
-float sinvalue, time, ampl, frequency, offset;
-sinvalue = time = 0;
-ample = 3;
-frequency = 0.05;
-offset = 0.25;
-int32_t timeout = 0;
-
-//Saturate Function here CJS.
-float saturate(float input, float saturation_limit) //Take in floats input and saturation limit.
-{
-    //input: Initial value to be saturated CJS
-    //saturation_limit: test float to be compared to 'input' CJS
-
-    float saturated
-
-    //test cases:
-    /*
-    Input: 3.4 || sat_lim: 5.5 ||: 3.4
-    Input: 9.5 || sat_lim: 5.5 ||: 5.5
-    Input: -7.4|| sat_lim: 5.5 ||: -5.5
-
-    Saturate IF (input > +saturation_limit || input < -saturation_limit)
-    */
-
-    if (input > saturation_limit || input < -saturation_limit) //Check if value needs to be saturated CJS.
-    {
-        if (input > saturation_limit) //If input is greater than saturation limit, return positive saturation limit.
-            return saturation_limit; break;
-        if (input < saturation_limit) //If input is less than saturation limit, return negative saturation limit.
-            return -saturation_limit; break;
-    }
-}
 
 void main(void)
 {
@@ -281,8 +249,7 @@ void main(void)
     // 200MHz CPU Freq,                       Period (in uSeconds)
     ConfigCpuTimer(&CpuTimer0, LAUNCHPAD_CPU_FREQUENCY, 10000);
     ConfigCpuTimer(&CpuTimer1, LAUNCHPAD_CPU_FREQUENCY, 20000);
-//    ConfigCpuTimer(&CpuTimer2, LAUNCHPAD_CPU_FREQUENCY, 40000); //Commented out original code
-    ConfigCpuTimer(&CpuTimer2, LAUNCHPAD_CPU_FREQUENCY, 5000); //Should make Serial output occur every 250ms
+    ConfigCpuTimer(&CpuTimer2, LAUNCHPAD_CPU_FREQUENCY, 40000);
 
     // Enable CpuTimer Interrupt bit TIE
     CpuTimer0Regs.TCR.all = 0x4000;
@@ -293,6 +260,37 @@ void main(void)
     //    init_serialSCIB(&SerialB,115200);
     //    init_serialSCIC(&SerialC,115200);
     //    init_serialSCID(&SerialD,115200);
+
+    //CJS setting bitfield registers for PWM in Exercise 2.
+    //CJS Set TBCTL options
+    EPwm12Regs.TBCTL.bit.CTRMODE = 0;       //CJS - Counter Mode to Count Up
+    EPwm12Regs.TBCTL.bit.FREE_SOFT = 11;    //CJS - Free soft emulation to Free Run
+    EPwm12Regs.TBCTL.bit.PHSEN = 0;         //CJS - Disable time-base counter @ phase register
+    EPwm12Regs.TBCTL.bit.CLKDIV =  000;     //CJS - Set clock div to div by 1.
+
+    //CJS Set TBCTR options
+    EPwm12Regs.TBCTR = 0;         //CJS Start time @ zero.
+
+    //CJS Set TBPRD options
+    EPwm12Regs.TBPRD = 15002;      //CJS - Period freq set to 5KHz (of 200msec)
+
+    //CJS Set CMPA options
+    EPwm12Regs.CMPA.bit.CMPA = 4951; //CJS - Start duty cycle at 0%
+
+    //CJS Set AQCTLA options
+    EPwm12Regs.AQCTLA.bit.CAU = 1; //
+    EPwm12Regs.AQCTLA.bit.ZRO = 2; //CJS - set PWM12A out-pin to LOW when CMPA reached. Pin HIGH when TBCTR register = zero.
+
+    //CJS Set TBPHS options
+    EPwm12Regs.TBPHS.bit.TBPHS = 0; //CJS - Phase = zero.
+
+    //CJS Override GPIO22 to use EPWM12A
+    GPIO_SetupPinMux(22, GPIO_MUX_CPU1, 5);   //CJS Set pin 22 to use PWM instead of GPIO
+
+    EALLOW; //CJS Set protected registers (Below are protected registers)
+    GpioCtrlRegs.GPAPUD.bit.GPIO22 = 1; //CJS Disable pull-up resistor.
+    EDIS;   //CJS end of protected registers.
+
 
 
     // Enable CPU int1 which is connected to CPU-Timer 0, CPU int13
@@ -394,3 +392,4 @@ __interrupt void cpu_timer2_isr(void)
 		UARTPrint = 1;
 	}
 }
+
