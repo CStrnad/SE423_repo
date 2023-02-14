@@ -40,6 +40,7 @@ uint32_t numSWIcalls = 0;
 extern uint32_t numRXA;
 uint16_t UARTPrint = 0;
 uint16_t LEDdisplaynum = 0;
+uint16_t updown = 0;    //CJS global variable to control the count for CMPA.
 
 
 void main(void)
@@ -292,7 +293,6 @@ void main(void)
     EDIS;   //CJS end of protected registers.
 
 
-
     // Enable CPU int1 which is connected to CPU-Timer 0, CPU int13
     // which is connected to CPU-Timer 1, and CPU int 14, which is connected
     // to CPU-Timer 2:  int 12 is for the SWI.  
@@ -356,7 +356,7 @@ __interrupt void cpu_timer0_isr(void)
 //    }
 
     if ((numTimer0calls%250) == 0) {
-        displayLEDletter(LEDdisplaynum);
+//        displayLEDletter(LEDdisplaynum);  //CJS Commented out for HW2.
         LEDdisplaynum++;
         if (LEDdisplaynum == 0xFFFF) {  // prevent roll over exception
             LEDdisplaynum = 0;
@@ -387,6 +387,15 @@ __interrupt void cpu_timer2_isr(void)
     GpioDataRegs.GPATOGGLE.bit.GPIO31 = 1;
 
     CpuTimer2.InterruptCount++;
+
+    if ((CpuTimer2.InterruptCount % 2.5 == 0)){ //CJS Every 0.1 seconds do something
+//        if (EPwm12Regs.CMPA.bit.CMPA <= 15002)
+//            updown == 1;
+//        if (EPwm12Regs.CMPA.bit.CMPA <= 15002)
+
+//        EPwm12Regs.CMPA.bit.CMPA ++; //Incriment CMPA register. CJS
+
+    }
 	
 	if ((CpuTimer2.InterruptCount % 50) == 0) {
 		UARTPrint = 1;
