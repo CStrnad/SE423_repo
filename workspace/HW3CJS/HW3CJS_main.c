@@ -287,7 +287,7 @@ void main(void)
     PieVectTable.SCIB_TX_INT = &TXBINT_data_sent;
     PieVectTable.SCIC_TX_INT = &TXCINT_data_sent;
     PieVectTable.SCID_TX_INT = &TXDINT_data_sent;
-    PieVectTable.SCIB_RX_INT = &SPIB_isr;   //CJS Set up vector table to trigger interrupt function.
+    PieVectTable.SPIB_RX_INT = &SPIB_isr;   //CJS Set up vector table to trigger interrupt function.
 
     PieVectTable.EMIF_ERROR_INT = &SWI_isr;
     EDIS;    // This is needed to disable write to EALLOW protected registers
@@ -338,7 +338,7 @@ void main(void)
     SpibRegs.SPICTL.bit.TALK = 1; // Enable transmission    //CJS Set to 1 to enable Transmission.
     SpibRegs.SPIPRI.bit.FREE = 1; // Free run, continue SPI operation
     SpibRegs.SPICTL.bit.SPIINTENA = 0; // Disables the SPI interrupt CJS
-    SpibRegs.SPIBRR.bit.SPI_BIT_RATE = 50; // Set SCLK bit rate to 1 MHz so 1us period. SPI base clock is
+    SpibRegs.SPIBRR.bit.SPI_BIT_RATE = 49; // Set SCLK bit rate to 1 MHz so 1us period. SPI base clock is
      // 50MHZ. And this setting divides that base clock to create SCLK’s period. Assuming 50MHz Clock / 1 MHz = 50. CJS
     SpibRegs.SPISTS.all = 0x0000; // Clear status flags just in case they are set for some reason
     SpibRegs.SPIFFTX.bit.SPIRST = 1;// Pull SPI FIFO out of reset, SPI FIFO can resume transmit or receive.
@@ -351,10 +351,10 @@ void main(void)
     SpibRegs.SPIFFRX.bit.RXFFIENA = 1; // Enable the RX FIFO Interrupt. RXFFST >= RXFFIL
     SpibRegs.SPIFFCT.bit.TXDLY = 0; //Set delay between transmits to 0 spi clocks.
     SpibRegs.SPICCR.bit.SPISWRESET = 1; // Pull the SPI out of reset
-    SpibRegs.SPIFFTX.bit.TXFIFO = 0; // Release transmit FIFO from reset.
+    SpibRegs.SPIFFTX.bit.TXFIFO = 1; // Release transmit FIFO from reset.
     SpibRegs.SPIFFRX.bit.RXFIFORESET = 1; // Re-enable receive FIFO operation
     SpibRegs.SPICTL.bit.SPIINTENA = 1; // Enables SPI interrupt. !! I don’t think this is needed. Need to Test
-    SpibRegs.SPIFFRX.bit.RXFFIL = 10; //Interrupt Level to 16 words or more received into FIFO causes interrupt. This is just the initial setting for the register. Will be changed below
+    SpibRegs.SPIFFRX.bit.RXFFIL = 0x10; //Interrupt Level to 16 words or more received into FIFO causes interrupt. This is just the initial setting for the register. Will be changed below
     //----------------------------------------------SPI Setup End-------------------------------------------------------
 
 
@@ -440,7 +440,7 @@ __interrupt void cpu_timer0_isr(void)
 
     //CJS This block of code is designed to tell the SPI controller to transmit two 15-bit values.
     //Clear GPIO66 Low to act as a Slave Select. Right now, just to scope. Later to select MPU9250 chip
-    GpioDataRegs.GPCSET.bit.GPIO66 = 0;
+    GpioDataRegs.GPCCLEAR.bit.GPIO66 = 1;
     SpibRegs.SPIFFRX.bit.RXFFIL = 2; // Issue the SPIB_RX_INT when two values are in the RX FIFO
     SpibRegs.SPITXBUF = 0x4A3B; // 0x4A3B and 0xB517 have no special meaning. Wanted to send
     SpibRegs.SPITXBUF = 0xB517; // something so you can see the pattern on the Oscilloscope
@@ -489,9 +489,6 @@ __interrupt void cpu_timer1_isr(void)
 // cpu_timer2_isr CPU Timer2 ISR
 __interrupt void cpu_timer2_isr(void)
 {
-	
-	
-
 
     CpuTimer2.InterruptCount++;
 	
@@ -505,8 +502,8 @@ int16_t spivalue1 = 0;
 int16_t spivalue2 = 0;
 
 __interrupt void SPIB_isr(void){
-    spivalue1 = SpibRegs.???; // Read first 16 bit value off RX FIFO. Probably is zero since no chip
-    spivalue2 = SpibRegs.???; // Read second 16 bit value off RX FIFO. Again probably zero
+    spivalue1 = SpibRegs.SPIRXBUF; // Read first 16 bit value off RX FIFO. Probably is zero since no chip
+    spivalue2 = SpibRegs.SPIRXBUF; // Read second 16 bit value off RX FIFO. Again probably zero
     GpioDataRegs.GPCSET.bit.GPIO66 = 1; // Set GPIO 66 high to end Slave Select. Now to Scope. Later to deselect MPU9250.
     // Later when actually communicating with the MPU9250 do something with the data. Now do nothing.
     SpibRegs.SPIFFRX.bit.RXFFOVFCLR = 1; // Clear Overflow flag just in case of an overflow
