@@ -1,8 +1,7 @@
-// This file is commented by Christopher Strnad. Search for CJS for comments by me.
 //#############################################################################
-// FILE:   HW3CJS_main.c
+// FILE:   HWstarter_main.c
 //
-// TITLE:  HW3 Code for SE423 - Mechatronics.
+// TITLE:  HW Starter
 //#############################################################################
 
 // Included Files
@@ -33,7 +32,6 @@ __interrupt void cpu_timer0_isr(void);
 __interrupt void cpu_timer1_isr(void);
 __interrupt void cpu_timer2_isr(void);
 __interrupt void SWI_isr(void);
-__interrupt void SPIB_isr(void);    //CJS SPI B interrupt predefinition.
 
 // Count variables
 uint32_t numTimer0calls = 0;
@@ -41,15 +39,6 @@ uint32_t numSWIcalls = 0;
 extern uint32_t numRXA;
 uint16_t UARTPrint = 0;
 uint16_t LEDdisplaynum = 0;
-uint16_t songPosition = 0;  //CJS Global var to maintain position in song array.
-uint32_t numSPIBcalls = 0;
-int32_t gyroZRaw = 0;
-
-uint16_t lenSong = 23;
-
-//CJS Custome song
-uint16_t customSong[1] = {A4NOTE};
-
 
 
 void main(void)
@@ -246,7 +235,6 @@ void main(void)
     PieVectTable.SCIB_TX_INT = &TXBINT_data_sent;
     PieVectTable.SCIC_TX_INT = &TXCINT_data_sent;
     PieVectTable.SCID_TX_INT = &TXDINT_data_sent;
-    PieVectTable.SPIB_RX_INT = &SPIB_isr;   //CJS Set up vector table to trigger interrupt function.
 
     PieVectTable.EMIF_ERROR_INT = &SWI_isr;
     EDIS;    // This is needed to disable write to EALLOW protected registers
@@ -259,7 +247,7 @@ void main(void)
     // Configure CPU-Timer 0, 1, and 2 to interrupt every given period:
     // 200MHz CPU Freq,                       Period (in uSeconds)
     ConfigCpuTimer(&CpuTimer0, LAUNCHPAD_CPU_FREQUENCY, 10000);
-    ConfigCpuTimer(&CpuTimer1, LAUNCHPAD_CPU_FREQUENCY, 125000);
+    ConfigCpuTimer(&CpuTimer1, LAUNCHPAD_CPU_FREQUENCY, 20000);
     ConfigCpuTimer(&CpuTimer2, LAUNCHPAD_CPU_FREQUENCY, 40000);
 
     // Enable CpuTimer Interrupt bit TIE
@@ -272,71 +260,6 @@ void main(void)
     //    init_serialSCIC(&SerialC,115200);
     //    init_serialSCID(&SerialD,115200);
 
-    //-------------------------------------------------SPI Setup-----------------------------------------------------
-    GPIO_SetupPinMux(66, GPIO_MUX_CPU1, 0); // Set as GPIO66 and used as MPU-9250 SS
-    GPIO_SetupPinOptions(66, GPIO_OUTPUT, GPIO_PUSHPULL); // Make GPIO66 an Output Pin
-    GpioDataRegs.GPCSET.bit.GPIO66 = 1; //Initially Set GPIO66/SS High so MPU-9250 is not selected
-    GPIO_SetupPinMux(63, GPIO_MUX_CPU1, 15); //Set GPIO63 pin to SPISIMOB
-    GPIO_SetupPinMux(64, GPIO_MUX_CPU1, 15); //Set GPIO64 pin to SPISOMIB
-    GPIO_SetupPinMux(65, GPIO_MUX_CPU1, 15); //Set GPIO65 pin to SPICLKB
-    EALLOW;
-    GpioCtrlRegs.GPBPUD.bit.GPIO63 = 0; // Enable Pull-ups on SPI PINs Recommended by TI for SPI Pins
-    GpioCtrlRegs.GPCPUD.bit.GPIO64 = 0;
-    GpioCtrlRegs.GPCPUD.bit.GPIO65 = 0;
-    GpioCtrlRegs.GPBQSEL2.bit.GPIO63 = 3; // Set I/O pin to asynchronous mode recommended for SPI
-    GpioCtrlRegs.GPCQSEL1.bit.GPIO64 = 3; // Set I/O pin to asynchronous mode recommended for SPI
-    GpioCtrlRegs.GPCQSEL1.bit.GPIO65 = 3; // Set I/O pin to asynchronous mode recommended for SPI
-    EDIS;
-
-    // ---------------------------------------------------------------------------
-    SpibRegs.SPICCR.bit.SPISWRESET = 0; // Put SPI in Reset //CJS Set zero to put SPI in Reset mode.
-    SpibRegs.SPICTL.bit.CLK_PHASE = 1; //This happens to be the mode for both the DAN28027 and
-    SpibRegs.SPICCR.bit.CLKPOLARITY = 0; //The MPU-9250, Mode 01.
-    SpibRegs.SPICTL.bit.MASTER_SLAVE = 1; // Set to SPI Master //CJS Enabled to set SPI to select Master.
-    SpibRegs.SPICCR.bit.SPICHAR = 0xF; // Set to transmit and receive 16 bits each write to SPITXBUF  //CJS set to F.
-    SpibRegs.SPICTL.bit.TALK = 1; // Enable transmission    //CJS Set to 1 to enable Transmission.
-    SpibRegs.SPIPRI.bit.FREE = 1; // Free run, continue SPI operation
-    SpibRegs.SPICTL.bit.SPIINTENA = 0; // Disables the SPI interrupt CJS
-    SpibRegs.SPIBRR.bit.SPI_BIT_RATE = 49; // Set SCLK bit rate to 1 MHz so 1us period. SPI base clock is
-     // 50MHZ. And this setting divides that base clock to create SCLK’s period. Assuming 50MHz Clock / 1 MHz = 50. CJS
-    SpibRegs.SPISTS.all = 0x0000; // Clear status flags just in case they are set for some reason
-    SpibRegs.SPIFFTX.bit.SPIRST = 1;// Pull SPI FIFO out of reset, SPI FIFO can resume transmit or receive.
-    SpibRegs.SPIFFTX.bit.SPIFFENA = 1; // Enable SPI FIFO enhancements
-    SpibRegs.SPIFFTX.bit.TXFIFO = 0; // Write 0 to reset the FIFO pointer to zero, and hold in reset
-    SpibRegs.SPIFFTX.bit.TXFFINTCLR = 1; // Write 1 to clear SPIFFTX[TXFFINT] flag just in case it is set
-    SpibRegs.SPIFFRX.bit.RXFIFORESET = 0; // Write 0 to reset the FIFO pointer to zero, and hold in reset
-    SpibRegs.SPIFFRX.bit.RXFFOVFCLR = 1; // Write 1 to clear SPIFFRX[RXFFOVF] just in case it is set
-    SpibRegs.SPIFFRX.bit.RXFFINTCLR = 1; // Write 1 to clear SPIFFRX[RXFFINT] flag just in case it is set
-    SpibRegs.SPIFFRX.bit.RXFFIENA = 1; // Enable the RX FIFO Interrupt. RXFFST >= RXFFIL
-    SpibRegs.SPIFFCT.bit.TXDLY = 0; //Set delay between transmits to 0 spi clocks.
-    SpibRegs.SPICCR.bit.SPISWRESET = 1; // Pull the SPI out of reset
-    SpibRegs.SPIFFTX.bit.TXFIFO = 1; // Release transmit FIFO from reset.
-    SpibRegs.SPIFFRX.bit.RXFIFORESET = 1; // Re-enable receive FIFO operation
-    SpibRegs.SPICTL.bit.SPIINTENA = 1; // Enables SPI interrupt. !! I don’t think this is needed. Need to Test
-    SpibRegs.SPIFFRX.bit.RXFFIL = 0x10; //Interrupt Level to 16 words or more received into FIFO causes interrupt. This is just the initial setting for the register. Will be changed below
-    //----------------------------------------------SPI Setup End-------------------------------------------------------
-
-
-    EPwm9Regs.TBCTL.bit.CTRMODE = 0;     //CJS - Counter Mode to Count Up
-    EPwm9Regs.TBCTL.bit.FREE_SOFT = 3;   //CJS - Free soft emulation to Free Run
-    EPwm9Regs.TBCTL.bit.PHSEN = 0;       //CJS - Disable time-base counter @ phase register
-    EPwm9Regs.TBCTL.bit.CLKDIV =  1;     //CJS - Set clock div to divide by 2.
-    EPwm9Regs.TBCTR = 0;                 //CJS - Start time @ zero.
-//    EPwm9Regs.TBPRD = 10000;             //CJS - Period freq set to 5KHz (of 200msec)
-    EPwm9Regs.TBPRD = 47778;             //CJS - Period freq set to 8Hz or 125 uSec.
-//    EPwm9Regs.CMPA.bit.CMPA = 0;       //CJS - Disabled. State of PWM based on TBPRD.
-
-    EPwm9Regs.AQCTLA.bit.CAU = 0;        //CJS - When TBPRD is reached, set signal to HIGH.
-    EPwm9Regs.AQCTLA.bit.ZRO = 3;        //CJS - When Zero is reached, set signal to LOW.
-    EPwm9Regs.TBPHS.bit.TBPHS = 0;       //CJS - Phase = zero.
-
-
-
-    GPIO_SetupPinMux(16, GPIO_MUX_CPU1, 5);   //CJS Set buzzer pin to use PWM instead of GPIO
-
-    EALLOW;
-    GpioCtrlRegs.GPAPUD.bit.GPIO16 = 1; //CJS Disable pull-up resistor on buzzer pin.
-    EDIS;
 
     // Enable CPU int1 which is connected to CPU-Timer 0, CPU int13
     // which is connected to CPU-Timer 1, and CPU int 14, which is connected
@@ -347,14 +270,11 @@ void main(void)
     IER |= M_INT12;
     IER |= M_INT13;
     IER |= M_INT14;
-    IER |= M_INT6;  //CJS Enable INT6 in PIE Channel Mapping Table.
 
     // Enable TINT0 in the PIE: Group 1 interrupt 7
     PieCtrlRegs.PIEIER1.bit.INTx7 = 1;
 	// Enable SWI in the PIE: Group 12 interrupt 9
     PieCtrlRegs.PIEIER12.bit.INTx9 = 1;
-    // Enable SPIB in the PIE: Group 6 interrupt 3.
-    PieCtrlRegs.PIEIER6.bit.INTx3 = 1;  //CJS
 	
     // Enable global Interrupts and higher priority real-time debug events
     EINT;  // Enable Global interrupt INTM
@@ -365,8 +285,7 @@ void main(void)
     while(1)
     {
         if (UARTPrint == 1 ) {
-//				serial_printf(&SerialA,"Num Timer2:%ld Num SerialRX: %ld\r\n",CpuTimer2.InterruptCount,numRXA);
-            serial_printf(&SerialA,"GyroZ Value:  %ld \r\n",gyroZRaw);
+				serial_printf(&SerialA,"Num Timer2:%ld Num SerialRX: %ld\r\n",CpuTimer2.InterruptCount,numRXA);
             UARTPrint = 0;
         }
     }
@@ -398,16 +317,8 @@ __interrupt void cpu_timer0_isr(void)
 {
     CpuTimer0.InterruptCount++;
 
-    //CJS This block of code is designed to tell the SPI controller to transmit two 15-bit values.
-    //Clear GPIO66 Low to act as a Slave Select. Right now, just to scope. Later to select MPU9250 chip
-    GpioDataRegs.GPCCLEAR.bit.GPIO66 = 1;
-    SpibRegs.SPIFFRX.bit.RXFFIL = 2; // Issue the SPIB_RX_INT when two values are in the RX FIFO
-    SpibRegs.SPITXBUF = (0x8000 |0x4600); // 0x4A3B and 0xB517 have no special meaning. Wanted to send
-    SpibRegs.SPITXBUF = 0x0000; // something so you can see the pattern on the Oscilloscope
-
-
-
     numTimer0calls++;
+
 //    if ((numTimer0calls%50) == 0) {
 //        PieCtrlRegs.PIEIFR12.bit.INTx9 = 1;  // Manually cause the interrupt for the SWI
 //    }
@@ -430,53 +341,22 @@ __interrupt void cpu_timer0_isr(void)
 // cpu_timer1_isr - CPU Timer1 ISR
 __interrupt void cpu_timer1_isr(void)
 {
-
-    // Blink LaunchPad Blue LED
-    GpioDataRegs.GPATOGGLE.bit.GPIO31 = 1;
-
-    if(songPosition < SONG_LENGTH){
-        EPwm9Regs.TBPRD = songarray[songPosition];
-        songPosition++;
-    }
-    else if (songPosition == SONG_LENGTH){
-        GPIO_SetupPinMux(16, GPIO_MUX_CPU1, 1);   //CJS Set buzzer to GPIO pin to "Mute" it.
-//        songPosition = 0;
-    }
-
+	
+	
     CpuTimer1.InterruptCount++;
 }
 
 // cpu_timer2_isr CPU Timer2 ISR
 __interrupt void cpu_timer2_isr(void)
 {
+	
+	
+	// Blink LaunchPad Blue LED
+    GpioDataRegs.GPATOGGLE.bit.GPIO31 = 1;
 
     CpuTimer2.InterruptCount++;
 	
-//	if ((CpuTimer2.InterruptCount % 50) == 0) {
-//		UARTPrint = 1;
-//	}
-}
-
-//CJS global variables to hold the SPI values.
-int16_t spivalue1 = 0;
-int16_t spivalue2 = 0;
-
-__interrupt void SPIB_isr(void){
-    spivalue1 = SpibRegs.SPIRXBUF; // Read first 16 bit value off RX FIFO. Probably is zero since no chip
-
-    spivalue2 = SpibRegs.SPIRXBUF; // Read second 16 bit value off RX FIFO. Again probably zero //CJS set gyroZ value equal to val2.
-    gyroZRaw = spivalue2;
-    GpioDataRegs.GPCSET.bit.GPIO66 = 1; // Set GPIO 66 high to end Slave Select. Now to Scope. Later to deselect MPU9250.
-
-
-    if ((numSPIBcalls % 10) == 0) {
-            UARTPrint = 1;
-        }
-
-
-    // Later when actually communicating with the MPU9250 do something with the data. Now do nothing.
-    SpibRegs.SPIFFRX.bit.RXFFOVFCLR = 1; // Clear Overflow flag just in case of an overflow
-    SpibRegs.SPIFFRX.bit.RXFFINTCLR = 1; // Clear RX FIFO Interrupt flag so next interrupt will happen
-    PieCtrlRegs.PIEACK.all = PIEACK_GROUP6; // Acknowledge INT6 PIE interrupt
-    numSPIBcalls++;
+	if ((CpuTimer2.InterruptCount % 50) == 0) {
+		UARTPrint = 1;
+	}
 }
