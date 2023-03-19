@@ -260,6 +260,28 @@ void main(void)
     //    init_serialSCIC(&SerialC,115200);
     //    init_serialSCID(&SerialD,115200);
 
+    //------------ Servo EPWM Setup --------------------
+    //EPWM 8 A & B
+    EPwm8Regs.TBCTL.bit.CTRMODE = 0;       //CJS - Counter Mode to Count Up
+    EPwm8Regs.TBCTL.bit.FREE_SOFT = 3;    //CJS - Free soft emulation to Free Run
+    EPwm8Regs.TBCTL.bit.PHSEN = 0;         //CJS - Disable time-base counter @ phase register
+    EPwm8Regs.TBCTL.bit.CLKDIV =  0x111;     //CJS - Set clock div to div by 128.
+    EPwm8Regs.TBCTR = 0;         //CJS Start time @ zero.
+    EPwm8Regs.TBPRD = 7812;      //CJS - Period freq set to 50Hz
+    EPwm8Regs.CMPA.bit.CMPA = 0; //CJS - Start duty cycle at 0%
+    EPwm8Regs.AQCTLA.bit.CAU = 1; //
+    EPwm8Regs.AQCTLA.bit.ZRO = 2; //CJS - set PWM12A out-pin to LOW when CMPA reached. Pin HIGH when TBCTR register = zero.
+    EPwm8Regs.TBPHS.bit.TBPHS = 0; //CJS - Phase = zero.
+
+    //CJS Override GPIO22 to use EPWM12A
+    GPIO_SetupPinMux(22, GPIO_MUX_CPU1, 5);   //CJS Set pin 22 to use PWM instead of GPIO
+
+    //CJS Setting protected registers such that the pull-up resistor is disabled
+    EALLOW; //CJS Set protected registers (Below are protected registers)
+    GpioCtrlRegs.GPAPUD.bit.GPIO22 = 1; //CJS Disable pull-up resistor.
+    EDIS;   //CJS end of protected registers.
+
+    //------------ END SERVO EPWM Setup --------------------
 
     // Enable CPU int1 which is connected to CPU-Timer 0, CPU int13
     // which is connected to CPU-Timer 1, and CPU int 14, which is connected

@@ -41,9 +41,67 @@ extern uint32_t numRXA;
 uint16_t UARTPrint = 0;
 uint16_t LEDdisplaynum = 0;
 
-
 // Global Variables for State Machine
 uint16_t micFrequency = 0;
+uint16_t systemState = 0;   //CJS State for the system's state. Enabled after "enableTone" disabled after switching action completed.
+uint16_t enableTone = 0;    //CJS State for first "enabling" tone recognition.
+uint16_t triggerTone = 0;   //CJS State for "triggering" tone recognition.
+uint16_t swPos = 0;         //CJS State for recalling light switch position.
+
+//LED Stack Control Function
+void SetLEDsOnOff(int16_t LEDvalue)
+{
+    if((LEDvalue & 0x80) == 0x80) {
+        GpioDataRegs.GPDSET.bit.GPIO111 = 1;
+        GpioDataRegs.GPASET.bit.GPIO27 = 1;
+        GpioDataRegs.GPESET.bit.GPIO159 = 1;
+        GpioDataRegs.GPFSET.bit.GPIO160 = 1;
+    }
+    else {
+        GpioDataRegs.GPDCLEAR.bit.GPIO111 = 1;
+        GpioDataRegs.GPACLEAR.bit.GPIO27 = 1;
+        GpioDataRegs.GPECLEAR.bit.GPIO159 = 1;
+        GpioDataRegs.GPFCLEAR.bit.GPIO160 = 1;
+    }
+    if((LEDvalue & 0x100) == 0x100) {
+        GpioDataRegs.GPDSET.bit.GPIO97 = 1;
+        GpioDataRegs.GPASET.bit.GPIO26 = 1;
+        GpioDataRegs.GPESET.bit.GPIO158 = 1;
+    }
+    else {
+        GpioDataRegs.GPDCLEAR.bit.GPIO97 = 1;
+        GpioDataRegs.GPACLEAR.bit.GPIO26 = 1;
+        GpioDataRegs.GPECLEAR.bit.GPIO158 = 1;
+    }
+    if((LEDvalue & 0x200) == 0x200) {
+        GpioDataRegs.GPCSET.bit.GPIO95 = 1;
+        GpioDataRegs.GPASET.bit.GPIO25 = 1;
+        GpioDataRegs.GPESET.bit.GPIO157 = 1;
+    }
+    else {
+        GpioDataRegs.GPCCLEAR.bit.GPIO95 = 1;
+        GpioDataRegs.GPACLEAR.bit.GPIO25 = 1;
+        GpioDataRegs.GPECLEAR.bit.GPIO157 = 1;
+    }
+    if((LEDvalue & 0x400) == 0x400) {
+       GpioDataRegs.GPCSET.bit.GPIO94 = 1;
+       GpioDataRegs.GPESET.bit.GPIO131 = 1;
+       GpioDataRegs.GPBSET.bit.GPIO61 = 1;
+    }
+    else {
+       GpioDataRegs.GPCCLEAR.bit.GPIO94 = 1;
+       GpioDataRegs.GPECLEAR.bit.GPIO131 = 1;
+       GpioDataRegs.GPBCLEAR.bit.GPIO61 = 1;
+    }
+    if((LEDvalue & 0x800) == 0x800) {
+        GpioDataRegs.GPESET.bit.GPIO130 = 1;
+        GpioDataRegs.GPBSET.bit.GPIO60 = 1;
+    }
+    else {
+        GpioDataRegs.GPECLEAR.bit.GPIO130 = 1;
+        GpioDataRegs.GPBCLEAR.bit.GPIO60 = 1;
+    }
+}
 
 
 // To Move FFT DMA code to your Robot or Homework Projects look for the !!!!!!! comments
@@ -353,6 +411,27 @@ void main(void)
     //    init_serialSCIC(&SerialC,115200);
     //    init_serialSCID(&SerialD,115200);
 
+    // ---------------- Buzzer via EPWM9 Setup ------------------------
+    EPwm9Regs.TBCTL.bit.CTRMODE = 0;     //CJS - Counter Mode to Count Up
+    EPwm9Regs.TBCTL.bit.FREE_SOFT = 3;   //CJS - Free soft emulation to Free Run
+    EPwm9Regs.TBCTL.bit.PHSEN = 0;       //CJS - Disable time-base counter @ phase register
+    EPwm9Regs.TBCTL.bit.CLKDIV =  1;     //CJS - Set clock div to divide by 2.
+    EPwm9Regs.TBCTR = 0;                 //CJS - Start time @ zero.
+//    EPwm9Regs.TBPRD = 10000;             //CJS - Period freq set to 5KHz (of 200msec)
+    EPwm9Regs.TBPRD = 47778;             //CJS - Period freq set to 8Hz or 125 uSec.
+//    EPwm9Regs.CMPA.bit.CMPA = 0;       //CJS - Disabled. State of PWM based on TBPRD.
+
+    EPwm9Regs.AQCTLA.bit.CAU = 0;        //CJS - When TBPRD is reached, set signal to HIGH.
+    EPwm9Regs.AQCTLA.bit.ZRO = 3;        //CJS - When Zero is reached, set signal to LOW.
+    EPwm9Regs.TBPHS.bit.TBPHS = 0;       //CJS - Phase = zero.
+
+    GPIO_SetupPinMux(16, GPIO_MUX_CPU1, 5);   //CJS Set buzzer pin to use PWM instead of GPIO
+
+    EALLOW;
+    GpioCtrlRegs.GPAPUD.bit.GPIO16 = 1; //CJS Disable pull-up resistor on buzzer pin.
+    EDIS;
+    // ---------------- END EPWM9 Setup
+
     //!!!!!!!!!!!!!!!!!!!!!! DMAFFT Copy this block of code after your init_serial functions
     EALLOW;
     EPwm7Regs.ETSEL.bit.SOCAEN = 0; // Disable SOC on A group
@@ -501,6 +580,35 @@ void main(void)
     // IDLE loop. Just sit and loop forever (optional):
     while(1)
     {
+        // STATE MACHINE PRIMARY FUNCTION
+        // Pre-machine condition updates
+        if(enableTone == 1) systemState = 1;
+        if(systemState == 1) GpioDataRegs.GPASET.bit.GPIO22 = 1;
+        else GpioDataRegs.GPACLEAR.bit.GPIO22 = 1;
+
+        // State-Machine Loop
+        if(systemState == 1 && triggerTone == 1){
+            if(swPos == 0) {    //Switch currently in OFF position.
+                //###Move Servo
+                swPos = 1;
+            }
+            if(swPos == 1) {    //Switch currently in ON position.
+                //###Move Servo
+                swPos = 0;
+            }
+            //####FUNCTION FOR BUZZER TONE#####     //CJS sound buzzer for acknowledgement of servo move/trigger.
+            triggerTone = enableTone = systemState = 0;
+        }
+            //If system enabled && triggerTone called,
+                //Two Switch cases (or if's) depending on switch Position (0 for OFF, 1 for ON)
+
+                //If pos=0, turn servo to ON position and set swPos=1
+                //if pos=0, turn servo to OFF position and set swPos=0.
+
+            //Trigger buzzer tone for acknowledgment of action.
+            //Set triggerTone, enableTone, and systemState to 0.
+
+
         if (UARTPrint == 1 ) {
             serial_printf(&SerialA, "Power: %.3f Frequency: %.0f \r\n", maxpwr, maxpwrindex*10000.0/1024.0);
             //UART_printfLine(1,"Max Pwr %.3f",maxpwr);
@@ -550,6 +658,21 @@ void main(void)
     }
 }
 
+uint16_t songPosition = 0;
+#define toneALength 9
+uint16_t buzzerToneA[toneALength] = {C5NOTE, C5NOTE, C5NOTE, OFFNOTE, OFFNOTE, C5NOTE, C5NOTE, C5NOTE, OFFNOTE};
+
+void playTone() {
+    if(songPosition < toneALength){
+        EPwm9Regs.TBPRD = songarray[songPosition];
+        songPosition++;
+    }
+    else if (songPosition == toneALength){
+//        GPIO_SetupPinMux(16, GPIO_MUX_CPU1, 1);   //CJS Set buzzer to GPIO pin to "Mute" it.
+        EPwm9Regs.TBPRD = OFFNOTE;
+    }
+
+}
 
 // SWI_isr,  Using this interrupt as a Software started interrupt
 __interrupt void SWI_isr(void) {
@@ -571,6 +694,8 @@ __interrupt void SWI_isr(void) {
 
 }
 
+
+
 // cpu_timer0_isr - CPU Timer0 ISR
 __interrupt void cpu_timer0_isr(void)
 {
@@ -582,14 +707,28 @@ __interrupt void cpu_timer0_isr(void)
     //        PieCtrlRegs.PIEIFR12.bit.INTx9 = 1;  // Manually cause the interrupt for the SWI
     //    }
 
-    //if ((numTimer0calls%100) == 0) {
-    if (micFrequency > 1000.0 && micFrequency < 1200.0)
-        GpioDataRegs.GPBSET.bit.GPIO34 = 1;//displayLEDletter(1);
-    else
-        GpioDataRegs.GPBCLEAR.bit.GPIO34 = 1; //displayLEDletter(0);
-
-
+    //Check for first tone to enable the system.
+    if (micFrequency > 1000.0 && micFrequency < 1200.0) {
+        GpioDataRegs.GPBCLEAR.bit.GPIO34 = 1;   //Turn on RED LED onboard.
+        enableTone = 1;
+        EPwm9Regs.TBPRD = C4NOTE;//songarray[songPosition];
     }
+    else {
+        GpioDataRegs.GPBSET.bit.GPIO34 = 1; //Turn off RED LED onboard.
+        EPwm9Regs.TBPRD = OFFNOTE;
+    }
+
+    //Check for second to trigger switch move.
+    if (micFrequency > 1500.0 && micFrequency < 1700.0) {
+        GpioDataRegs.GPACLEAR.bit.GPIO31 = 1;   //Turn on BLUE LED onboard.
+        triggerTone = 1;
+        EPwm9Regs.TBPRD = C5NOTE;
+    }
+    else {
+        GpioDataRegs.GPASET.bit.GPIO31 = 1;     //Turn off BLUE onboard LED.
+        EPwm9Regs.TBPRD = OFFNOTE;
+    }
+
 //    if ((numTimer0calls%250) == 0) {
 //        displayLEDletter(LEDdisplaynum);
 //        LEDdisplaynum++;
@@ -619,7 +758,7 @@ __interrupt void cpu_timer2_isr(void)
 
 
     // Blink LaunchPad Blue LED
-    GpioDataRegs.GPATOGGLE.bit.GPIO31 = 1;
+//    GpioDataRegs.GPATOGGLE.bit.GPIO31 = 1;
 
     CpuTimer2.InterruptCount++;
 
