@@ -434,11 +434,11 @@ __interrupt void cpu_timer1_isr(void)
     // Blink LaunchPad Blue LED
     GpioDataRegs.GPATOGGLE.bit.GPIO31 = 1;
 
-    if(songPosition < SONG_LENGTH){
-        EPwm9Regs.TBPRD = songarray[songPosition];
+    if(songPosition < SONG_LENGTH){	//CJS play through each note of the song.
+        EPwm9Regs.TBPRD = songarray[songPosition];	//CJS set epwm period to note period, making the buzzer play that tone.
         songPosition++;
     }
-    else if (songPosition == SONG_LENGTH){
+    else if (songPosition == SONG_LENGTH){	//CJS Once the end of the array is reached.
         GPIO_SetupPinMux(16, GPIO_MUX_CPU1, 1);   //CJS Set buzzer to GPIO pin to "Mute" it.
 //        songPosition = 0;
     }

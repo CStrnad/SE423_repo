@@ -35,6 +35,9 @@ __interrupt void cpu_timer2_isr(void);
 __interrupt void SWI_isr(void);
 __interrupt void SPIB_isr(void);    //CJS SPI B interrupt predefinition.
 
+
+void setupSpib(void);
+
 // Count variables
 uint32_t numTimer0calls = 0;
 uint32_t numSWIcalls = 0;
@@ -42,8 +45,420 @@ extern uint32_t numRXA;
 uint16_t UARTPrint = 0;
 uint16_t LEDdisplaynum = 0;
 uint32_t temp = 0;
+int16_t numSPIBcalls = 0;
 
-void setupSPIB(void)
+//Global Variable Declarations for MPU - CJS
+int16_t gyroXRaw = 0;
+int16_t gyroYRaw = 0;
+int16_t gyroZRaw = 0;
+int16_t accelXRaw = 0;
+int16_t accelYRaw = 0;
+int16_t accelZRaw = 0;
+int16_t temperatureRaw = 0;
+int16_t garbageData = 0;
+
+float gyroXReading = 0;
+float gyroYReading = 0;
+float gyroZReading = 0;
+float accelXReading = 0;
+float accelYReading = 0;
+float accelZReading = 0;
+
+
+
+
+void main(void)
+{
+    // PLL, WatchDog, enable Peripheral Clocks
+    // This example function is found in the F2837xD_SysCtrl.c file.
+    InitSysCtrl();
+
+    InitGpio();
+
+    // Blue LED on LaunchPad
+    GPIO_SetupPinMux(31, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(31, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPASET.bit.GPIO31 = 1;
+
+    // Red LED on LaunchPad
+    GPIO_SetupPinMux(34, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(34, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPBSET.bit.GPIO34 = 1;
+
+    // LED1 and PWM Pin
+    GPIO_SetupPinMux(22, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(22, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPACLEAR.bit.GPIO22 = 1;
+
+    // LED2
+    GPIO_SetupPinMux(94, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(94, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPCCLEAR.bit.GPIO94 = 1;
+
+    // LED3
+    GPIO_SetupPinMux(95, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(95, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPCCLEAR.bit.GPIO95 = 1;
+
+    // LED4
+    GPIO_SetupPinMux(97, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(97, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPDCLEAR.bit.GPIO97 = 1;
+
+    // LED5
+    GPIO_SetupPinMux(111, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(111, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPDCLEAR.bit.GPIO111 = 1;
+
+    // LED6
+    GPIO_SetupPinMux(130, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(130, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPECLEAR.bit.GPIO130 = 1;
+
+    // LED7
+    GPIO_SetupPinMux(131, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(131, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPECLEAR.bit.GPIO131 = 1;
+
+    // LED8
+    GPIO_SetupPinMux(25, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(25, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPACLEAR.bit.GPIO25 = 1;
+
+    // LED9
+    GPIO_SetupPinMux(26, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(26, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPACLEAR.bit.GPIO26 = 1;
+
+    // LED10
+    GPIO_SetupPinMux(27, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(27, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPACLEAR.bit.GPIO27 = 1;
+
+    // LED11
+    GPIO_SetupPinMux(60, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(60, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPBCLEAR.bit.GPIO60 = 1;
+
+    // LED12
+    GPIO_SetupPinMux(61, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(61, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPBCLEAR.bit.GPIO61 = 1;
+
+    // LED13
+    GPIO_SetupPinMux(157, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(157, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPECLEAR.bit.GPIO157 = 1;
+
+    // LED14
+    GPIO_SetupPinMux(158, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(158, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPECLEAR.bit.GPIO158 = 1;
+
+    // LED15
+    GPIO_SetupPinMux(159, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(159, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPECLEAR.bit.GPIO159 = 1;
+
+    // LED16
+    GPIO_SetupPinMux(160, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(160, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPFCLEAR.bit.GPIO160 = 1;
+
+    //WIZNET Reset
+    GPIO_SetupPinMux(0, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(0, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPASET.bit.GPIO0 = 1;
+
+    //ESP8266 Reset
+    GPIO_SetupPinMux(1, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(1, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPASET.bit.GPIO1 = 1;
+
+    //SPIRAM  CS  Chip Select
+    GPIO_SetupPinMux(19, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(19, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPASET.bit.GPIO19 = 1;
+
+    //DRV8874 #1 DIR  Direction
+    GPIO_SetupPinMux(29, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(29, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPASET.bit.GPIO29 = 1;
+
+    //DRV8874 #2 DIR  Direction
+    GPIO_SetupPinMux(32, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(32, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPBSET.bit.GPIO32 = 1;
+
+    //DAN28027  CS  Chip Select
+    GPIO_SetupPinMux(9, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(9, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPASET.bit.GPIO9 = 1;
+
+    //MPU9250  CS  Chip Select
+    GPIO_SetupPinMux(66, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(66, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPCSET.bit.GPIO66 = 1;
+
+    //WIZNET  CS  Chip Select
+    GPIO_SetupPinMux(125, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(125, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPDSET.bit.GPIO125 = 1;
+
+    //PushButton 1
+    GPIO_SetupPinMux(4, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(4, GPIO_INPUT, GPIO_PULLUP);
+
+    //PushButton 2
+    GPIO_SetupPinMux(5, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(5, GPIO_INPUT, GPIO_PULLUP);
+
+    //PushButton 3
+    GPIO_SetupPinMux(6, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(6, GPIO_INPUT, GPIO_PULLUP);
+
+    //PushButton 4
+    GPIO_SetupPinMux(7, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(7, GPIO_INPUT, GPIO_PULLUP);
+
+    //Joy Stick Pushbutton
+    GPIO_SetupPinMux(8, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(8, GPIO_INPUT, GPIO_PULLUP);
+
+    // Clear all interrupts and initialize PIE vector table:
+    // Disable CPU interrupts
+    DINT;
+
+    // Initialize the PIE control registers to their default state.
+    // The default state is all PIE interrupts disabled and flags
+    // are cleared.
+    // This function is found in the F2837xD_PieCtrl.c file.
+    InitPieCtrl();
+
+    // Disable CPU interrupts and clear all CPU interrupt flags:
+    IER = 0x0000;
+    IFR = 0x0000;
+
+    // Initialize the PIE vector table with pointers to the shell Interrupt
+    // Service Routines (ISR).
+    // This will populate the entire table, even if the interrupt
+    // is not used in this example.  This is useful for debug purposes.
+    // The shell ISR routines are found in F2837xD_DefaultIsr.c.
+    // This function is found in F2837xD_PieVect.c.
+    InitPieVectTable();
+
+    // Interrupts that are used in this example are re-mapped to
+    // ISR functions found within this project
+    EALLOW;  // This is needed to write to EALLOW protected registers
+    PieVectTable.TIMER0_INT = &cpu_timer0_isr;
+    PieVectTable.TIMER1_INT = &cpu_timer1_isr;
+    PieVectTable.TIMER2_INT = &cpu_timer2_isr;
+    PieVectTable.SCIA_RX_INT = &RXAINT_recv_ready;
+    PieVectTable.SCIB_RX_INT = &RXBINT_recv_ready;
+    PieVectTable.SCIC_RX_INT = &RXCINT_recv_ready;
+    PieVectTable.SCID_RX_INT = &RXDINT_recv_ready;
+    PieVectTable.SCIA_TX_INT = &TXAINT_data_sent;
+    PieVectTable.SCIB_TX_INT = &TXBINT_data_sent;
+    PieVectTable.SCIC_TX_INT = &TXCINT_data_sent;
+    PieVectTable.SCID_TX_INT = &TXDINT_data_sent;
+    PieVectTable.SPIB_RX_INT = &SPIB_isr;   //CJS Set up vector table to trigger interrupt function.
+
+    PieVectTable.EMIF_ERROR_INT = &SWI_isr;
+    EDIS;    // This is needed to disable write to EALLOW protected registers
+
+
+    // Initialize the CpuTimers Device Peripheral. This function can be
+    // found in F2837xD_CpuTimers.c
+    InitCpuTimers();
+
+    // Configure CPU-Timer 0, 1, and 2 to interrupt every given period:
+    // 200MHz CPU Freq,                       Period (in uSeconds)
+    ConfigCpuTimer(&CpuTimer0, LAUNCHPAD_CPU_FREQUENCY, 1000);
+    ConfigCpuTimer(&CpuTimer1, LAUNCHPAD_CPU_FREQUENCY, 20000);
+    ConfigCpuTimer(&CpuTimer2, LAUNCHPAD_CPU_FREQUENCY, 40000);
+
+    // Enable CpuTimer Interrupt bit TIE
+    CpuTimer0Regs.TCR.all = 0x4000;
+    CpuTimer1Regs.TCR.all = 0x4000;
+    CpuTimer2Regs.TCR.all = 0x4000;
+
+    init_serialSCIA(&SerialA,115200);
+    //    init_serialSCIB(&SerialB,115200);
+    //    init_serialSCIC(&SerialC,115200);
+    //    init_serialSCID(&SerialD,115200);
+
+    setupSpib();    //  CJS Call SPIB initialization.
+
+
+    // Enable CPU int1 which is connected to CPU-Timer 0, CPU int13
+    // which is connected to CPU-Timer 1, and CPU int 14, which is connected
+    // to CPU-Timer 2:  int 12 is for the SWI.  
+    IER |= M_INT1;
+    IER |= M_INT8;  // SCIC SCID
+    IER |= M_INT9;  // SCIA
+    IER |= M_INT12;
+    IER |= M_INT13;
+    IER |= M_INT14;
+    IER |= M_INT6;  //CJS SpiB PIE
+
+    // Enable TINT0 in the PIE: Group 1 interrupt 7
+    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;
+    // Enable SWI in the PIE: Group 12 interrupt 9
+    PieCtrlRegs.PIEIER12.bit.INTx9 = 1;
+    //Spib 6.3 enable
+    PieCtrlRegs.PIEIER6.bit.INTx3 = 1;
+
+    // Enable global Interrupts and higher priority real-time debug events
+    EINT;  // Enable Global interrupt INTM
+    ERTM;  // Enable Global realtime interrupt DBGM
+
+    
+    // IDLE loop. Just sit and loop forever (optional):
+    while(1)
+    {
+        if (UARTPrint == 1 ) {
+//                serial_printf(&SerialA,"Num Timer2:%ld Num SerialRX: %ld\r\n",CpuTimer2.InterruptCount,numRXA);
+                serial_printf(&SerialA, "GX: %0.2f, GY: %0.2f, GZ: %0.2f, AX: %0.2f, AY: %0.2f, AZ: %0.2f\r\n", gyroXReading, gyroYReading, gyroZReading, accelXReading, accelYReading, accelZReading);
+            UARTPrint = 0;
+        }
+    }
+}
+
+
+// SWI_isr,  Using this interrupt as a Software started interrupt
+__interrupt void SWI_isr(void) {
+
+    // These three lines of code allow SWI_isr, to be interrupted by other interrupt functions
+    // making it lower priority than all other Hardware interrupts.
+    PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
+    asm("       NOP");                    // Wait one cycle
+    EINT;                                 // Clear INTM to enable interrupts
+
+
+
+    // Insert SWI ISR Code here.......
+
+
+    numSWIcalls++;
+    
+    DINT;
+
+}
+
+// cpu_timer0_isr - CPU Timer0 ISR
+__interrupt void cpu_timer0_isr(void)
+{
+    GpioDataRegs.GPCCLEAR.bit.GPIO66 = 1;   //CJS Opting Slave Select.
+
+    //Set SpibRegs.SPIFFRX.bit.RCFFIL to ### So that the SPIB interrupt is called when transmission each way is complete.
+//    SpibRegs.SPIFFRX.bit.RCFFIL = 8;
+    SpibRegs.SPIFFRX.bit.RXFFIL = 8;
+
+    //Transmit correct values to each IMU Register to sample each paired gyro and accell value
+    SpibRegs.SPITXBUF = (0x8000 |0x3A00);
+
+    //CJS Accelerometer X
+    SpibRegs.SPITXBUF = 0;
+
+    //CJS Accelerometer Y
+    SpibRegs.SPITXBUF = 0;
+
+    //CJS Accelerometer Z
+    SpibRegs.SPITXBUF = 0;
+
+    //Temperature
+    SpibRegs.SPITXBUF = 0;
+
+    // CJS Gyro X
+    SpibRegs.SPITXBUF = 0;
+
+    // CJS Gyro Y
+    SpibRegs.SPITXBUF = 0;
+
+    // CJS Gyro Z
+    SpibRegs.SPITXBUF = 0;
+
+    CpuTimer0.InterruptCount++;
+    numTimer0calls++;
+
+    if ((numTimer0calls % 200) == 0) {
+               UARTPrint = 1;
+           }
+
+
+    // Blink LaunchPad Red LED
+//    if((numTimer0calls % 20) == 0){
+    GpioDataRegs.GPBTOGGLE.bit.GPIO34 = 1;
+//    }
+    // Acknowledge this interrupt to receive more interrupts from group 1
+    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
+}
+
+// cpu_timer1_isr - CPU Timer1 ISR
+__interrupt void cpu_timer1_isr(void)
+{
+
+
+    CpuTimer1.InterruptCount++;
+}
+
+// cpu_timer2_isr CPU Timer2 ISR
+__interrupt void cpu_timer2_isr(void)
+{
+
+
+    // Blink LaunchPad Blue LED
+//    GpioDataRegs.GPATOGGLE.bit.GPIO31 = 1;
+
+    CpuTimer2.InterruptCount++;
+
+//    if ((CpuTimer2.InterruptCount % 50) == 0) {
+//        UARTPrint = 1;
+//    }
+}
+
+
+
+__interrupt void SPIB_isr(void){
+
+    GpioDataRegs.GPCSET.bit.GPIO66 = 1;   //CJS Opting Slave Select.
+
+	//CJS get data from MPU.
+    garbageData = SpibRegs.SPIRXBUF;
+    accelXRaw = SpibRegs.SPIRXBUF;
+    accelYRaw = SpibRegs.SPIRXBUF;
+    accelZRaw = SpibRegs.SPIRXBUF;
+    temperatureRaw = SpibRegs.SPIRXBUF;
+    gyroXRaw = SpibRegs.SPIRXBUF;
+    gyroYRaw = SpibRegs.SPIRXBUF;
+    gyroZRaw = SpibRegs.SPIRXBUF;
+
+
+    //CJS Convert to useful values.
+    gyroXReading = gyroXRaw * 250.0/32767.0;
+    gyroYReading = gyroYRaw * 250.0/32767.0;
+    gyroZReading = gyroZRaw * 250.0/32767.0;
+
+    accelXReading = accelXRaw * 4.0 / 32767.0;
+    accelYReading = accelYRaw * 4.0 / 32767.0;
+    accelZReading = accelZRaw * 4.0 / 32767.0;
+
+
+
+    GpioDataRegs.GPCSET.bit.GPIO66 = 1; // CJS Set GPIO 66 high to end Slave Select.
+
+
+
+
+    numSPIBcalls++;
+    // Later when actually communicating with the MPU9250 do something with the data. Now do nothing.
+    SpibRegs.SPIFFRX.bit.RXFFOVFCLR = 1; // Clear Overflow flag just in case of an overflow
+    SpibRegs.SPIFFRX.bit.RXFFINTCLR = 1; // Clear RX FIFO Interrupt flag so next interrupt will happen
+    PieCtrlRegs.PIEACK.all = PIEACK_GROUP6; // Acknowledge INT6 PIE interrupt
+
+}
+
+void setupSpib(void)
 {
 
 
@@ -114,36 +529,42 @@ void setupSPIB(void)
 
     //SpibRegs.SPITXBUF = (0x7700 | 0x00EB);
     // To address 00x13 write 0x00
-    SpibRegs.SPITXBUF = (0x13 | 0x00);
+    SpibRegs.SPITXBUF = (0x1300 | 0x00);
     // To address 00x14 write 0x00
-    SpibRegs.SPITXBUF = (0x14 | 0x00);
+    SpibRegs.SPITXBUF = (0x0000 | 0x00);
     // To address 00x15 write 0x00
-    SpibRegs.SPITXBUF = (0x15 | 0x00);
+    SpibRegs.SPITXBUF = (0x0000 | 0x00);
     // To address 00x16 write 0x00
-    SpibRegs.SPITXBUF = (0x16 | 0x00);
+    SpibRegs.SPITXBUF = (0x0000 | 0x13);
     // To address 00x17 write 0x00
-    SpibRegs.SPITXBUF = (0x17 | 0x00);
+    SpibRegs.SPITXBUF = (0x0200 | 0x00);
     // To address 00x18 write 0x00
-    SpibRegs.SPITXBUF = (0x18 | 0x00);
+    SpibRegs.SPITXBUF = (0x0800 | 0x06);
     // To address 00x19 write 0x13
-    SpibRegs.SPITXBUF = (0x14 | 0x00);
+    SpibRegs.SPITXBUF = (0x0000 | 0x00);
     // To address 00x1A write 0x02
-    SpibRegs.SPITXBUF = (0x1A | 0x02);
-    // To address 00x1B write 0x00
-    SpibRegs.SPITXBUF = (0x1B | 0x00);
-    // To address 00x1C write 0x08
-    SpibRegs.SPITXBUF = (0x1C | 0x08);
-    // To address 00x1D write 0x06
-    SpibRegs.SPITXBUF = (0x1D | 0x06);
-    // To address 00x1E write 0x00
-    SpibRegs.SPITXBUF = (0x1E | 0x00);
-    // To address 00x1F write 0x00
-    SpibRegs.SPITXBUF = (0x1F | 0x00);
+//    SpibRegs.SPITXBUF = (0x1A | 0x02);
+//    // To address 00x1B write 0x00
+//    SpibRegs.SPITXBUF = (0x1B | 0x00);
+//    // To address 00x1C write 0x08
+//    SpibRegs.SPITXBUF = (0x1C | 0x08);
+//    // To address 00x1D write 0x06
+//    SpibRegs.SPITXBUF = (0x1D | 0x06);
+//    // To address 00x1E write 0x00
+//    SpibRegs.SPITXBUF = (0x1E | 0x00);
+//    // To address 00x1F write 0x00
+//    SpibRegs.SPITXBUF = (0x1F | 0x00);
 
 
     // wait for the correct number of 16 bit values to be received into the RX FIFO
-    while(SpibRegs.SPIFFRX.bit.RXFFST !=13);
+    while(SpibRegs.SPIFFRX.bit.RXFFST !=7);
     GpioDataRegs.GPCSET.bit.GPIO66 = 1; // Slave Select High
+    temp = SpibRegs.SPIRXBUF;
+    temp = SpibRegs.SPIRXBUF;
+    temp = SpibRegs.SPIRXBUF;
+    temp = SpibRegs.SPIRXBUF;
+    temp = SpibRegs.SPIRXBUF;
+    temp = SpibRegs.SPIRXBUF;
     temp = SpibRegs.SPIRXBUF;
     //  read the additional number of garbage receive values off the RX FIFO to clear out the RX FIFO
     DELAY_US(10);  // Delay 10us to allow time for the MPU-2950 to get ready for next transfer.
@@ -161,25 +582,29 @@ void setupSPIB(void)
     // Perform the number of needed writes to SPITXBUF to write to all 7 registers
 
     // To address 00x23 write 0x00
-    SpibRegs.SPITXBUF = (0x23 | 0x00);
+    SpibRegs.SPITXBUF = (0x2300 | 0x00);
     // To address 00x24 write 0x40
-    SpibRegs.SPITXBUF = (0x24 | 0x40);
+//    SpibRegs.SPITXBUF = (0x24 | 0x40);
+    SpibRegs.SPITXBUF = (0x4000 | 0x8C);
     // To address 00x25 write 0x8C
-    SpibRegs.SPITXBUF = (0x25 | 0x8C);
+    SpibRegs.SPITXBUF = (0x0200 | 0x88); //26/27
     // To address 00x26 write 0x02
-    SpibRegs.SPITXBUF = (0x26 | 0x02);
-    // To address 00x27 write 0x88
-    SpibRegs.SPITXBUF = (0x27 | 0x88);
-    // To address 00x28 write 0x0C
-    SpibRegs.SPITXBUF = (0x28 | 0x0C);
-    // To address 00x29 write 0x0A
-    SpibRegs.SPITXBUF = (0x29 | 0x0A);
+    SpibRegs.SPITXBUF = (0x0C00 | 0x0A);  //28/29
+//    // To address 00x27 write 0x88
+//    SpibRegs.SPITXBUF = (0x27 | 0x88);  //
+//    // To address 00x28 write 0x0C
+//    SpibRegs.SPITXBUF = (0x28 | 0x0C);
+//    // To address 00x29 write 0x0A
+//    SpibRegs.SPITXBUF = (0x29 | 0x0A);
 
 
     // wait for the correct number of 16 bit values to be received into the RX FIFO
-    while(SpibRegs.SPIFFRX.bit.RXFFST !=7);
+    while(SpibRegs.SPIFFRX.bit.RXFFST != 4);
     GpioDataRegs.GPCSET.bit.GPIO66 = 1; // Slave Select High
     temp = SpibRegs.SPIRXBUF;     //  read the additional number of garbage receive values off the RX FIFO to clear out the RX FIFO
+    temp = SpibRegs.SPIRXBUF;
+    temp = SpibRegs.SPIRXBUF;
+    temp = SpibRegs.SPIRXBUF;
     DELAY_US(10);  // Delay 10us to allow time for the MPU-2950 to get ready for next transfer.
 
 
@@ -250,42 +675,42 @@ void setupSPIB(void)
     DELAY_US(10);
 
     GpioDataRegs.GPCCLEAR.bit.GPIO66 = 1;
-    SpibRegs.SPITXBUF = (0x7700 | 0x00EB); // 0x7700
+    SpibRegs.SPITXBUF = (0x7700 | 0x00E8); // 0x7700
     while(SpibRegs.SPIFFRX.bit.RXFFST !=1);
     GpioDataRegs.GPCSET.bit.GPIO66 = 1;
     temp = SpibRegs.SPIRXBUF;
     DELAY_US(10);
 
     GpioDataRegs.GPCCLEAR.bit.GPIO66 = 1;
-    SpibRegs.SPITXBUF = (0x7800 | 0x0012); // 0x7800
+    SpibRegs.SPITXBUF = (0x7800 | 0x002A); // 0x7800
     while(SpibRegs.SPIFFRX.bit.RXFFST !=1);
     GpioDataRegs.GPCSET.bit.GPIO66 = 1;
     temp = SpibRegs.SPIRXBUF;
     DELAY_US(10);
 
     GpioDataRegs.GPCCLEAR.bit.GPIO66 = 1;
-    SpibRegs.SPITXBUF = (0x7A00 | 0x0010); // 0x7A00
+    SpibRegs.SPITXBUF = (0x7A00 | 0x00E8); // 0x7A00
     while(SpibRegs.SPIFFRX.bit.RXFFST !=1);
     GpioDataRegs.GPCSET.bit.GPIO66 = 1;
     temp = SpibRegs.SPIRXBUF;
     DELAY_US(10);
 
     GpioDataRegs.GPCCLEAR.bit.GPIO66 = 1;
-    SpibRegs.SPITXBUF = (0x7B00 | 0x00FA); // 0x7B00
+    SpibRegs.SPITXBUF = (0x7B00 | 0x002A); // 0x7B00
     while(SpibRegs.SPIFFRX.bit.RXFFST !=1);
     GpioDataRegs.GPCSET.bit.GPIO66 = 1;
     temp = SpibRegs.SPIRXBUF;
     DELAY_US(10);
 
     GpioDataRegs.GPCCLEAR.bit.GPIO66 = 1;
-    SpibRegs.SPITXBUF = (0x7D00 | 0x0021); // 0x7D00
+    SpibRegs.SPITXBUF = (0x7D00 | 0x001F); // 0x7D00
     while(SpibRegs.SPIFFRX.bit.RXFFST !=1);
     GpioDataRegs.GPCSET.bit.GPIO66 = 1;
     temp = SpibRegs.SPIRXBUF;
     DELAY_US(10);
 
     GpioDataRegs.GPCCLEAR.bit.GPIO66 = 1;
-    SpibRegs.SPITXBUF = (0x7E00 | 0x0050); // 0x7E00
+    SpibRegs.SPITXBUF = (0x7E00 | 0x00E4); // 0x7E00
     while(SpibRegs.SPIFFRX.bit.RXFFST !=1);
     GpioDataRegs.GPCSET.bit.GPIO66 = 1;
     temp = SpibRegs.SPIRXBUF;
@@ -295,373 +720,4 @@ void setupSPIB(void)
     SpibRegs.SPIFFRX.bit.RXFFOVFCLR=1;  // Clear Overflow flag
     SpibRegs.SPIFFRX.bit.RXFFINTCLR=1;  // Clear Interrupt flag
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP6;
-}
-
-void main(void)
-{
-    // PLL, WatchDog, enable Peripheral Clocks
-    // This example function is found in the F2837xD_SysCtrl.c file.
-    InitSysCtrl();
-
-    InitGpio();
-	
-	// Blue LED on LaunchPad
-    GPIO_SetupPinMux(31, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(31, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPASET.bit.GPIO31 = 1;
-
-	// Red LED on LaunchPad
-    GPIO_SetupPinMux(34, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(34, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPBSET.bit.GPIO34 = 1;
-
-	// LED1 and PWM Pin
-    GPIO_SetupPinMux(22, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(22, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPACLEAR.bit.GPIO22 = 1;
-	
-	// LED2
-    GPIO_SetupPinMux(94, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(94, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPCCLEAR.bit.GPIO94 = 1;
-
-	// LED3
-    GPIO_SetupPinMux(95, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(95, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPCCLEAR.bit.GPIO95 = 1;
-
-	// LED4
-    GPIO_SetupPinMux(97, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(97, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPDCLEAR.bit.GPIO97 = 1;
-
-	// LED5
-    GPIO_SetupPinMux(111, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(111, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPDCLEAR.bit.GPIO111 = 1;
-
-	// LED6
-    GPIO_SetupPinMux(130, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(130, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPECLEAR.bit.GPIO130 = 1;
-
-	// LED7	
-    GPIO_SetupPinMux(131, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(131, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPECLEAR.bit.GPIO131 = 1;
-
-	// LED8
-    GPIO_SetupPinMux(25, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(25, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPACLEAR.bit.GPIO25 = 1;
-
-	// LED9
-    GPIO_SetupPinMux(26, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(26, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPACLEAR.bit.GPIO26 = 1;
-
-	// LED10
-    GPIO_SetupPinMux(27, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(27, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPACLEAR.bit.GPIO27 = 1;
-
-	// LED11	
-    GPIO_SetupPinMux(60, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(60, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPBCLEAR.bit.GPIO60 = 1;
-
-	// LED12	
-    GPIO_SetupPinMux(61, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(61, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPBCLEAR.bit.GPIO61 = 1;
-
-	// LED13
-    GPIO_SetupPinMux(157, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(157, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPECLEAR.bit.GPIO157 = 1;
-
-	// LED14
-    GPIO_SetupPinMux(158, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(158, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPECLEAR.bit.GPIO158 = 1;
-	
-	// LED15
-    GPIO_SetupPinMux(159, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(159, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPECLEAR.bit.GPIO159 = 1;
-
-	// LED16
-    GPIO_SetupPinMux(160, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(160, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPFCLEAR.bit.GPIO160 = 1;
-
-    //WIZNET Reset
-    GPIO_SetupPinMux(0, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(0, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPASET.bit.GPIO0 = 1;
-
-    //ESP8266 Reset
-    GPIO_SetupPinMux(1, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(1, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPASET.bit.GPIO1 = 1;
-
-	//SPIRAM  CS  Chip Select
-    GPIO_SetupPinMux(19, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(19, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPASET.bit.GPIO19 = 1;
-
-    //DRV8874 #1 DIR  Direction
-    GPIO_SetupPinMux(29, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(29, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPASET.bit.GPIO29 = 1;
-
-    //DRV8874 #2 DIR  Direction
-    GPIO_SetupPinMux(32, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(32, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPBSET.bit.GPIO32 = 1;
-
-    //DAN28027  CS  Chip Select
-    GPIO_SetupPinMux(9, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(9, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPASET.bit.GPIO9 = 1;
-	
-    //MPU9250  CS  Chip Select
-    GPIO_SetupPinMux(66, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(66, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPCSET.bit.GPIO66 = 1;
-	
-	//WIZNET  CS  Chip Select
-    GPIO_SetupPinMux(125, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(125, GPIO_OUTPUT, GPIO_PUSHPULL);
-    GpioDataRegs.GPDSET.bit.GPIO125 = 1;
-	
-    //PushButton 1
-    GPIO_SetupPinMux(4, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(4, GPIO_INPUT, GPIO_PULLUP);
-
-    //PushButton 2
-    GPIO_SetupPinMux(5, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(5, GPIO_INPUT, GPIO_PULLUP);
-
-    //PushButton 3
-    GPIO_SetupPinMux(6, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(6, GPIO_INPUT, GPIO_PULLUP);
-
-    //PushButton 4
-    GPIO_SetupPinMux(7, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(7, GPIO_INPUT, GPIO_PULLUP);
-	
-	//Joy Stick Pushbutton
-    GPIO_SetupPinMux(8, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(8, GPIO_INPUT, GPIO_PULLUP);
-
-    // Clear all interrupts and initialize PIE vector table:
-    // Disable CPU interrupts
-    DINT;
-
-    // Initialize the PIE control registers to their default state.
-    // The default state is all PIE interrupts disabled and flags
-    // are cleared.
-    // This function is found in the F2837xD_PieCtrl.c file.
-    InitPieCtrl();
-
-    // Disable CPU interrupts and clear all CPU interrupt flags:
-    IER = 0x0000;
-    IFR = 0x0000;
-
-    // Initialize the PIE vector table with pointers to the shell Interrupt
-    // Service Routines (ISR).
-    // This will populate the entire table, even if the interrupt
-    // is not used in this example.  This is useful for debug purposes.
-    // The shell ISR routines are found in F2837xD_DefaultIsr.c.
-    // This function is found in F2837xD_PieVect.c.
-    InitPieVectTable();
-
-    // Interrupts that are used in this example are re-mapped to
-    // ISR functions found within this project
-    EALLOW;  // This is needed to write to EALLOW protected registers
-    PieVectTable.TIMER0_INT = &cpu_timer0_isr;
-    PieVectTable.TIMER1_INT = &cpu_timer1_isr;
-    PieVectTable.TIMER2_INT = &cpu_timer2_isr;
-    PieVectTable.SCIA_RX_INT = &RXAINT_recv_ready;
-    PieVectTable.SCIB_RX_INT = &RXBINT_recv_ready;
-    PieVectTable.SCIC_RX_INT = &RXCINT_recv_ready;
-    PieVectTable.SCID_RX_INT = &RXDINT_recv_ready;
-    PieVectTable.SCIA_TX_INT = &TXAINT_data_sent;
-    PieVectTable.SCIB_TX_INT = &TXBINT_data_sent;
-    PieVectTable.SCIC_TX_INT = &TXCINT_data_sent;
-    PieVectTable.SCID_TX_INT = &TXDINT_data_sent;
-    PieVectTable.SPIB_RX_INT = &SPIB_isr;   //CJS Set up vector table to trigger interrupt function.
-
-    PieVectTable.EMIF_ERROR_INT = &SWI_isr;
-    EDIS;    // This is needed to disable write to EALLOW protected registers
-
-
-    // Initialize the CpuTimers Device Peripheral. This function can be
-    // found in F2837xD_CpuTimers.c
-    InitCpuTimers();
-
-    // Configure CPU-Timer 0, 1, and 2 to interrupt every given period:
-    // 200MHz CPU Freq,                       Period (in uSeconds)
-    ConfigCpuTimer(&CpuTimer0, LAUNCHPAD_CPU_FREQUENCY, 10000);
-    ConfigCpuTimer(&CpuTimer1, LAUNCHPAD_CPU_FREQUENCY, 20000);
-    ConfigCpuTimer(&CpuTimer2, LAUNCHPAD_CPU_FREQUENCY, 40000);
-
-    // Enable CpuTimer Interrupt bit TIE
-    CpuTimer0Regs.TCR.all = 0x4000;
-    CpuTimer1Regs.TCR.all = 0x4000;
-    CpuTimer2Regs.TCR.all = 0x4000;
-
-    init_serialSCIA(&SerialA,115200);
-    //    init_serialSCIB(&SerialB,115200);
-    //    init_serialSCIC(&SerialC,115200);
-    //    init_serialSCID(&SerialD,115200);
-
-    setupSPIB();    //  CJS Call SPIB initialization.
-
-
-    // Enable CPU int1 which is connected to CPU-Timer 0, CPU int13
-    // which is connected to CPU-Timer 1, and CPU int 14, which is connected
-    // to CPU-Timer 2:  int 12 is for the SWI.  
-    IER |= M_INT1;
-    IER |= M_INT8;  // SCIC SCID
-    IER |= M_INT9;  // SCIA
-    IER |= M_INT12;
-    IER |= M_INT13;
-    IER |= M_INT14;
-
-    // Enable TINT0 in the PIE: Group 1 interrupt 7
-    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;
-	// Enable SWI in the PIE: Group 12 interrupt 9
-    PieCtrlRegs.PIEIER12.bit.INTx9 = 1;
-	
-    // Enable global Interrupts and higher priority real-time debug events
-    EINT;  // Enable Global interrupt INTM
-    ERTM;  // Enable Global realtime interrupt DBGM
-
-    
-    // IDLE loop. Just sit and loop forever (optional):
-    while(1)
-    {
-        if (UARTPrint == 1 ) {
-				serial_printf(&SerialA,"Num Timer2:%ld Num SerialRX: %ld\r\n",CpuTimer2.InterruptCount,numRXA);
-            UARTPrint = 0;
-        }
-    }
-}
-
-
-// SWI_isr,  Using this interrupt as a Software started interrupt
-__interrupt void SWI_isr(void) {
-
-    // These three lines of code allow SWI_isr, to be interrupted by other interrupt functions
-	// making it lower priority than all other Hardware interrupts.  
-	PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
-    asm("       NOP");                    // Wait one cycle
-    EINT;                                 // Clear INTM to enable interrupts
-	
-	
-	
-    // Insert SWI ISR Code here.......
-	
-	
-    numSWIcalls++;
-    
-    DINT;
-
-}
-
-// cpu_timer0_isr - CPU Timer0 ISR
-__interrupt void cpu_timer0_isr(void)
-{
-    //Transmit correct values to each IMU Register to sample each paired gyro and accell value
-
-
-    //Set SpibRegs.SPIFFRX.bit.RCFFIL to ### So that the SPIB interrupt is called when transmission each way is complete.
-
-
-
-
-
-
-
-    CpuTimer0.InterruptCount++;
-
-    numTimer0calls++;
-
-//    if ((numTimer0calls%50) == 0) {
-//        PieCtrlRegs.PIEIFR12.bit.INTx9 = 1;  // Manually cause the interrupt for the SWI
-//    }
-
-
-	// Blink LaunchPad Red LED
-    GpioDataRegs.GPBTOGGLE.bit.GPIO34 = 1;
-
-    // Acknowledge this interrupt to receive more interrupts from group 1
-    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
-}
-
-// cpu_timer1_isr - CPU Timer1 ISR
-__interrupt void cpu_timer1_isr(void)
-{
-	
-	
-    CpuTimer1.InterruptCount++;
-}
-
-// cpu_timer2_isr CPU Timer2 ISR
-__interrupt void cpu_timer2_isr(void)
-{
-	
-	
-	// Blink LaunchPad Blue LED
-    GpioDataRegs.GPATOGGLE.bit.GPIO31 = 1;
-
-    CpuTimer2.InterruptCount++;
-	
-	if ((CpuTimer2.InterruptCount % 50) == 0) {
-		UARTPrint = 1;
-	}
-}
-
-__interrupt void SPIB_isr(void){
-
-    spivalue1 = SpibRegs.SPIRXBUF;
-    spivalue2 = SpibRegs.SPIRXBUF;
-    spivalue3 = SpibRegs.SPIRXBUF;
-    spivalue4 = SpibRegs.SPIRXBUF;
-    spivalue5 = SpibRegs.SPIRXBUF;
-    spivalue6 = SpibRegs.SPIRXBUF;
-    spivalue7 = SpibRegs.SPIRXBUF;
-    spivalue8 = SpibRegs.SPIRXBUF;
-    spivalue9 = SpibRegs.SPIRXBUF;
-    spivalue10 = SpibRegs.SPIRXBUF;
-    spivalue11 = SpibRegs.SPIRXBUF;
-    spivalue12 = SpibRegs.SPIRXBUF;
-    spivalue13 = SpibRegs.SPIRXBUF;
-    spivalue14 = SpibRegs.SPIRXBUF;
-
-
-
-
-
-    spivalue1 = SpibRegs.SPIRXBUF; // Read first 16 bit value off RX FIFO. Probably is zero since no chip
-
-    spivalue2 = SpibRegs.SPIRXBUF; // Read second 16 bit value off RX FIFO. Again probably zero //CJS set gyroZ value equal to val2.
-    gyroZRaw = spivalue2;
-
-
-    GpioDataRegs.GPCSET.bit.GPIO66 = 1; // Set GPIO 66 high to end Slave Select. Now to Scope. Later to deselect MPU9250.
-
-
-    // if ((numSPIBcalls % 10) == 0) {
-            // UARTPrint = 1;
-        // }
-
-
-    // Later when actually communicating with the MPU9250 do something with the data. Now do nothing.
-    SpibRegs.SPIFFRX.bit.RXFFOVFCLR = 1; // Clear Overflow flag just in case of an overflow
-    SpibRegs.SPIFFRX.bit.RXFFINTCLR = 1; // Clear RX FIFO Interrupt flag so next interrupt will happen
-    PieCtrlRegs.PIEACK.all = PIEACK_GROUP6; // Acknowledge INT6 PIE interrupt
-    numSPIBcalls++;
 }
