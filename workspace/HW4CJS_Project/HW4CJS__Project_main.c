@@ -55,6 +55,7 @@ uint16_t systemState = 0;   //CJS State for the system's state. Enabled after "e
 uint16_t enableTone = 0;    //CJS State for first "enabling" tone recognition.
 uint16_t triggerTone = 0;   //CJS State for "triggering" tone recognition.
 uint16_t swPos = 0;         //CJS State for recalling light switch position.
+uint16_t lastPos = 2;
 
 //LED Stack Control Function
 void SetLEDsOnOff(int16_t LEDvalue)
@@ -761,23 +762,59 @@ __interrupt void cpu_timer2_isr(void)
     if(systemState == 1) GpioDataRegs.GPASET.bit.GPIO22 = 1;
     else GpioDataRegs.GPACLEAR.bit.GPIO22 = 1;
 
+    //New State Machine
+    if(enableTone == 1){
+        GpioDataRegs.GPASET.bit.GPIO22 = 1;
+        if(triggerTone == 1){
+            if(lastPos == 1 && swPos == 0){
+                setEPWM8A_RCServo(-50); //CJS Move Servo to press UP Button.
+                swPos = 1;
+                lastPos = 2;
+
+            }
+            if(lastPos == 2 && swPos == 0){
+                setEPWM8A_RCServo(60); //CJS Move Servo to press DOWN Button.
+                swPos = 1;
+                lastPos = 1;
+
+            }
+            if(swPos == 1 && (CpuTimer2.InterruptCount % 60) == 0){
+                setEPWM8A_RCServo(0); //CJS Move Servo to Home Position.
+                swPos = 0;
+            }
+            if(swPos == 0){
+                GpioDataRegs.GPACLEAR.bit.GPIO22 = 1;
+                enableTone = 0;
+                triggerTone = 0;
+
+            }
+        }
+    }
+
+    /*
     // State-Machine Loop
     if(systemState == 1 && triggerTone == 1 && swPos == 0){
         //Switch currently in OFF position.
         //###Move Servo to ON Position
-        setEPWM8A_RCServo(90);
+        setEPWM8A_RCServo(-50);
         swPos = 1;
         triggerTone = enableTone = systemState = enableTone = 0;
     }
     if(systemState == 1 && triggerTone == 1 && swPos == 1){
        //Switch currently in ON position.
         //###Move Servo to OFF Position
-        setEPWM8A_RCServo(-90);
+        setEPWM8A_RCServo(60);
         swPos = 0;
 
         //####FUNCTION FOR BUZZER TONE#####     //CJS sound buzzer for acknowledgement of servo move/trigger.
         triggerTone = enableTone = systemState = enableTone = 0;
     }
+
+    */
+
+
+
+
     //If system enabled && triggerTone called,
     //Two Switch cases (or if's) depending on switch Position (0 for OFF, 1 for ON)
 
